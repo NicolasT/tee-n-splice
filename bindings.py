@@ -30,9 +30,9 @@ class Tee(object):
 
         def errcheck(result, func, arguments): #pylint: disable=W0613,C0111
             if result == -1:
-                errno_ = ctypes.get_errno()
+                errno = ctypes.get_errno()
 
-                raise OSError(errno_, os.strerror(errno_))
+                raise OSError(errno, os.strerror(errno))
             else:
                 return result
 
@@ -93,9 +93,9 @@ class Splice(object):
 
         def errcheck(result, func, arguments): #pylint: disable=W0613,C0111
             if result == -1:
-                errno_ = ctypes.get_errno()
+                errno = ctypes.get_errno()
 
-                raise OSError(errno_, os.strerror(errno_))
+                raise OSError(errno, os.strerror(errno))
             else:
                 off_in = arguments[1]
                 off_out = arguments[3]
