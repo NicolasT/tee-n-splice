@@ -17,6 +17,8 @@ _libc = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
 class Tee(object):
     '''Binding to `tee`'''
 
+    __slots__ = '_c_tee',
+
     def __init__(self):
         c_tee = _libc.tee
 
@@ -28,6 +30,16 @@ class Tee(object):
         ]
 
         c_tee.restype = ctypes.c_ssize_t
+
+        def errcheck(result, func, arguments): #pylint: disable=W0613,C0111
+            if result == -1:
+                errno_ = ctypes.get_errno()
+
+                raise OSError(errno_, os.strerror(errno_))
+            else:
+                return result
+
+        c_tee.errcheck = errcheck
 
         self._c_tee = c_tee
 
@@ -49,16 +61,7 @@ class Tee(object):
         c_fd_in = ctypes.c_int(getattr(fd_in, 'fileno', lambda: fd_in)())
         c_fd_out = ctypes.c_int(getattr(fd_out, 'fileno', lambda: fd_out)())
 
-        c_len = ctypes.c_size_t(len_)
-
-        res = self._c_tee(c_fd_in, c_fd_out, c_len, c_flags)
-
-        if res == -1:
-            errno_ = ctypes.get_errno()
-
-            raise OSError(errno_, os.strerror(errno_))
-
-        return res
+        return self._c_tee(c_fd_in, c_fd_out, ctypes.c_size_t(len_), c_flags)
 
 tee = Tee()
 del Tee
@@ -73,6 +76,8 @@ class Splice(object):
     SPLICE_F_MORE = 4
     SPLICE_F_GIFT = 8
 
+    __slots__ = '_c_splice',
+
     def __init__(self):
         c_splice = _libc.splice
 
@@ -86,6 +91,22 @@ class Splice(object):
         ]
 
         c_splice.restype = ctypes.c_ssize_t
+
+        def errcheck(result, func, arguments): #pylint: disable=W0613,C0111
+            if result == -1:
+                errno_ = ctypes.get_errno()
+
+                raise OSError(errno_, os.strerror(errno_))
+            else:
+                off_in = arguments[1]
+                off_out = arguments[3]
+
+                return (
+                    result,
+                    off_in.contents if off_in is not None else None,
+                    off_out.contents if off_out is not None else None)
+
+        c_splice.errcheck = errcheck
 
         self._c_splice = c_splice
 
@@ -118,20 +139,9 @@ class Splice(object):
         c_off_out = \
             ctypes.byref(_c_loff_t(off_out)) if off_out is not None else None
 
-        c_len = ctypes.c_size_t(len_)
-
-        res = self._c_splice(
-            c_fd_in, c_off_in, c_fd_out, c_off_out, c_len, c_flags)
-
-        if res == -1:
-            errno_ = ctypes.get_errno()
-
-            raise OSError(errno_, os.strerror(errno_))
-
-        return (
-            res,
-            c_off_in.contents if c_off_in is not None else None,
-            c_off_out.contents if c_off_out is not None else None)
+        return self._c_splice(
+            c_fd_in, c_off_in, c_fd_out, c_off_out, ctypes.c_size_t(len_),
+            c_flags)
 
 splice = Splice()
 del Splice
