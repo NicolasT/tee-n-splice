@@ -10,17 +10,14 @@ import ctypes.util
 
 __all__ = ['tee', 'splice']
 
-_c_loff_t = ctypes.c_uint64
-
-_libc = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
-
 class Tee(object):
     '''Binding to `tee`'''
 
     __slots__ = '_c_tee',
 
     def __init__(self):
-        c_tee = _libc.tee
+        libc = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
+        c_tee = libc.tee
 
         c_tee.argtypes = [
             ctypes.c_int,
@@ -54,14 +51,14 @@ class Tee(object):
         '''
 
         if not isinstance(flags, (int, long)):
-            c_flags = ctypes.c_uint(reduce(lambda a, b: a | b, flags, 0))
+            c_flags = reduce(lambda a, b: a | b, flags, 0)
         else:
-            c_flags = ctypes.c_uint(flags)
+            c_flags = flags
 
-        c_fd_in = ctypes.c_int(getattr(fd_in, 'fileno', lambda: fd_in)())
-        c_fd_out = ctypes.c_int(getattr(fd_out, 'fileno', lambda: fd_out)())
+        c_fd_in = getattr(fd_in, 'fileno', lambda: fd_in)()
+        c_fd_out = getattr(fd_out, 'fileno', lambda: fd_out)()
 
-        return self._c_tee(c_fd_in, c_fd_out, ctypes.c_size_t(len_), c_flags)
+        return self._c_tee(c_fd_in, c_fd_out, len_, c_flags)
 
 tee = Tee()
 del Tee
@@ -79,9 +76,11 @@ class Splice(object):
     __slots__ = '_c_splice',
 
     def __init__(self):
-        c_splice = _libc.splice
+        libc = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
+        c_splice = libc.splice
 
-        c_loff_t_p = ctypes.POINTER(_c_loff_t)
+        c_loff_t = ctypes.c_uint64
+        c_loff_t_p = ctypes.POINTER(c_loff_t)
 
         c_splice.argtypes = [
             ctypes.c_int, c_loff_t_p,
@@ -127,21 +126,20 @@ class Splice(object):
         #       effect on the result of this function call) is untested.
 
         if not isinstance(flags, (int, long)):
-            c_flags = ctypes.c_uint(reduce(lambda a, b: a | b, flags, 0))
+            c_flags = reduce(lambda a, b: a | b, flags, 0)
         else:
-            c_flags = ctypes.c_uint(flags)
+            c_flags = flags
 
-        c_fd_in = ctypes.c_int(getattr(fd_in, 'fileno', lambda: fd_in)())
-        c_fd_out = ctypes.c_int(getattr(fd_out, 'fileno', lambda: fd_out)())
+        c_fd_in = getattr(fd_in, 'fileno', lambda: fd_in)()
+        c_fd_out = getattr(fd_out, 'fileno', lambda: fd_out)()
 
         c_off_in = \
-            ctypes.byref(_c_loff_t(off_in)) if off_in is not None else None
+            ctypes.byref(off_in) if off_in is not None else None
         c_off_out = \
-            ctypes.byref(_c_loff_t(off_out)) if off_out is not None else None
+            ctypes.byref(off_out) if off_out is not None else None
 
         return self._c_splice(
-            c_fd_in, c_off_in, c_fd_out, c_off_out, ctypes.c_size_t(len_),
-            c_flags)
+            c_fd_in, c_off_in, c_fd_out, c_off_out, len_, c_flags)
 
 splice = Splice()
 del Splice
